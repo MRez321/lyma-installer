@@ -1,6 +1,5 @@
 $ErrorActionPreference = "Stop"
-
-Write-Host "lyma-docker Installer"
+Write-Host "lyma-docker Local Installer"
 Write-Host "-------------------------------"
 
 Write-Host "Please enter your Nexus credentials in the popup window..."
@@ -9,43 +8,21 @@ $cred = Get-Credential -Message "Nexus Authentication"
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $cred.UserName, $cred.GetNetworkCredential().Password)))
 $headers = @{Authorization=("Basic {0}" -f $base64AuthInfo)}
 
-Write-Host "Checking for latest version..."
 $LatestUrl = "https://repo.lymagroups.ir/repository/lyma-raw-hosted/lyma-docker/latest.txt"
-try {
-    $Version = (Invoke-RestMethod -Uri $LatestUrl -Headers $headers).Trim()
-} catch {
-    Write-Error "Failed to fetch latest version. Check your credentials."
-    exit 1
-}
-
+$Version = (Invoke-RestMethod -Uri $LatestUrl -Headers $headers).Trim()
 $NexusUrl = "https://repo.lymagroups.ir/repository/lyma-raw-hosted/lyma-docker/$Version/lyma-docker-$Version.zip"
 
-$InstallRoot = "$env:LOCALAPPDATA\lyma"
-$VersionDir = "$InstallRoot\$Version"
-$ActiveLink = "$InstallRoot\lyma-docker"
-$ZipPath = "$env:TEMP\lyma-docker.zip"
+$ActiveLink = ".\lyma-docker"
+$ZipPath = "$env:TEMP\lyma-docker-local.zip"
 
-Write-Host "Downloading v$Version..."
-if (Test-Path $VersionDir) { Remove-Item -Recurse -Force $VersionDir }
-New-Item -ItemType Directory -Force -Path $VersionDir | Out-Null
-
+Write-Host "Downloading v$Version to current directory..."
 Invoke-WebRequest -Uri $NexusUrl -Headers $headers -OutFile $ZipPath
 
-Write-Host "Extracting..."
-Expand-Archive -Path $ZipPath -DestinationPath $VersionDir -Force
+if (Test-Path $ActiveLink) { Remove-Item -Recurse -Force $ActiveLink }
+Expand-Archive -Path $ZipPath -DestinationPath ".\temp_extract" -Force
 Remove-Item $ZipPath
 
-# git archive wraps files in lyma-docker-$Version\
-$ActualDir = "$VersionDir\lyma-docker-$Version"
+Move-Item ".\temp_extract\lyma-docker-$Version" -Destination $ActiveLink
+Remove-Item ".\temp_extract" -Recurse -Force
 
-if (Test-Path $ActiveLink) { cmd /c rmdir "$ActiveLink" }
-cmd /c mklink /J "$ActiveLink" "$ActualDir" | Out-Null
-
-$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($CurrentPath -notlike "*$ActiveLink*") {
-    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$ActiveLink", "User")
-    $env:Path += ";$ActiveLink"
-    Write-Host "Added $ActiveLink to your User PATH."
-}
-
-Write-Host "Successfully installed v$Version. Open a new terminal to use it."
+Write-Host "Successfully extracted to $(Resolve-Path $ActiveLink)"
