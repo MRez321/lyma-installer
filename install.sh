@@ -6,9 +6,8 @@ echo "-------------------------------"
 
 read -p "Enter your Nexus Username: " NEXUS_USER
 read -s -p "Enter your Nexus User Token: " NEXUS_TOKEN
-echo "" 
+echo ""
 
-echo "Checking for latest version..."
 LATEST_URL="https://repo.lymagroups.ir/repository/lyma-raw-hosted/lyma-docker/latest.txt"
 VERSION=$(curl -fsSL -u "$NEXUS_USER:$NEXUS_TOKEN" "$LATEST_URL")
 if [ -z "$VERSION" ]; then
@@ -17,32 +16,24 @@ if [ -z "$VERSION" ]; then
 fi
 
 NEXUS_URL="https://repo.lymagroups.ir/repository/lyma-raw-hosted/lyma-docker/$VERSION/lyma-docker-$VERSION.zip"
+TARGET_DIR="./lyma-docker"
+TEMP_ZIP="/tmp/lyma.zip"
+TEMP_DIR="/tmp/lyma_extract"
 
-INSTALL_ROOT="$HOME/.lyma"
-VERSION_DIR="$INSTALL_ROOT/$VERSION"
-ACTIVE_LINK="$INSTALL_ROOT/lyma-docker"
-
-echo "Downloading v$VERSION..."
-rm -rf "$VERSION_DIR"
-mkdir -p "$VERSION_DIR"
-
-curl -fsSL -u "$NEXUS_USER:$NEXUS_TOKEN" "$NEXUS_URL" -o "/tmp/lyma.zip"
+echo "Downloading v$VERSION to current directory..."
+curl -fsSL -u "$NEXUS_USER:$NEXUS_TOKEN" "$NEXUS_URL" -o "$TEMP_ZIP"
 
 echo "Extracting..."
-unzip -q "/tmp/lyma.zip" -d "$VERSION_DIR"
-rm "/tmp/lyma.zip"
+rm -rf "$TARGET_DIR"
+mkdir -p "$TARGET_DIR"
 
-# git archive wraps files in lyma-docker-$VERSION/
-ACTUAL_DIR="$VERSION_DIR/lyma-docker-$VERSION"
-ln -sfn "$ACTUAL_DIR" "$ACTIVE_LINK"
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
+unzip -q "$TEMP_ZIP" -d "$TEMP_DIR"
 
-if [[ ":$PATH:" != *":$ACTIVE_LINK:"* ]]; then
-    echo "export PATH=\$PATH:$ACTIVE_LINK" >> "$HOME/.bashrc"
-    if [ -f "$HOME/.zshrc" ]; then
-        echo "export PATH=\$PATH:$ACTIVE_LINK" >> "$HOME/.zshrc"
-    fi
-    export PATH=$PATH:$ACTIVE_LINK
-    echo "Added $ACTIVE_LINK to your shell profile."
-fi
+# Move contents of the nested git archive folder directly into ./lyma-docker
+mv "$TEMP_DIR/lyma-docker-$VERSION/"* "$TARGET_DIR/"
 
-echo "Successfully installed v$VERSION. Open a new terminal to use it."
+rm -rf "$TEMP_DIR" "$TEMP_ZIP"
+
+echo "Successfully extracted to $(pwd)/$TARGET_DIR"
