@@ -34,9 +34,10 @@ curl -fsSL https://raw.githubusercontent.com/MRez321/lyma-installer/main/install
 1. You will be prompted to enter your Nexus username and User Token.
 2. The script fetches the latest version number from Nexus (`latest.txt`).
 3. It downloads the versioned zip archive and extracts the files directly into a folder named `lyma-docker` in your current directory.
-4. It cleans up the temporary downloaded zip files.
-5. It leaves your system PATH completely untouched.
+4. If an existing `.env` file is found in the `lyma-docker` folder, the installer will automatically back it up and restore it after the new files are extracted, ensuring your secrets are never lost.
+5. It cleans up the temporary downloaded zip files.
+6. It leaves your system PATH completely untouched.
 
 ## Updating
 
-To update to the newest release, simply run the installation command again from the same directory. The installer will automatically download the new version and overwrite the existing `lyma-docker` folder.
+To update to the newest release, simply run the installation command again from the same directory. The installer will automatically download the new version, overwrite the existing `lyma-docker` folder, and preserve your local `.env` file.
