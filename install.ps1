@@ -16,18 +16,30 @@ $NexusUrl = "https://repo.lymagroups.ir/repository/lyma-raw-hosted/lyma-docker/$
 $TargetDir = ".\lyma-docker"
 $TempDir = "$env:TEMP\lyma_extract"
 $ZipPath = "$env:TEMP\lyma.zip"
+$EnvPath = Join-Path $TargetDir ".env"
+$EnvBackup = "$env:TEMP\.env_backup"
 
 Write-Host "Downloading v$Version to current directory..."
 Invoke-WebRequest -Uri $NexusUrl -Headers $headers -OutFile $ZipPath
 
 Write-Host "Extracting..."
-if (Test-Path $TargetDir) { Remove-Item -Recurse -Force $TargetDir }
-New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
 
+# Backup .env if it exists
+if (Test-Path $EnvPath) {
+    Write-Host "Preserving existing .env file..."
+    Copy-Item $EnvPath $EnvBackup -Force
+}
+
+if (Test-Path $TargetDir) { Remove-Item -Recurse -Force $TargetDir }
 Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
 
-# Move contents of the nested git archive folder directly into .\lyma-docker
-Move-Item "$TempDir\lyma-docker-$Version\*" -Destination $TargetDir -Force
+# Move the entire extracted folder (including hidden files) to the target directory
+Move-Item "$TempDir\lyma-docker-$Version" -Destination $TargetDir -Force
+
+# Restore .env if it was backed up
+if (Test-Path $EnvBackup) {
+    Move-Item $EnvBackup $EnvPath -Force
+}
 
 Remove-Item $ZipPath -Force
 Remove-Item $TempDir -Recurse -Force
